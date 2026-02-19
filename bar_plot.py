@@ -35,10 +35,9 @@ def plot_proportional_bars(data_values, labels, sample_name, ax, primary_color='
         ax.text(value + (1 - value) / 2, i, f'{1 - value:.3f}', va='center', ha='center', color='white', fontsize=10, fontweight='bold')
 
     # Setting titles and labels
-    ax.set_title("Probability of being Progressive for" + sample_name)
+    ax.set_title("Probability of being Progressive for " + sample_name)
     ax.set_xlabel('Proportion')
-    ax.set_yticks(range(len(labels)))
-    ax.set_yticklabels(labels)
+    ax.set_yticks([])
 
 
 # Example usage:

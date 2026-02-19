@@ -3,10 +3,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def roc_plot(roc_files, colors):
-    # 每条曲线的颜色（可按自己喜好改）
+def roc_plot(roc_files, colors, out_pdf=None, dpi=300):
+    plt.rcParams["axes.facecolor"] = "white"
+    plt.rcParams["figure.facecolor"] = "white"
 
-    plt.figure(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(12, 8))
 
     for label, path in roc_files.items():
         if not os.path.exists(path):
@@ -15,7 +16,6 @@ def roc_plot(roc_files, colors):
 
         df = pd.read_csv(path)
 
-        # 这里假设列名为 fpr, tpr_mean, tpr_ci95, mean_auc
         fpr      = df["fpr"].values
         tpr_mean = df["tpr_mean"].values
         ci95     = df["tpr_ci95"].values if "tpr_ci95" in df.columns else None
@@ -28,32 +28,31 @@ def roc_plot(roc_files, colors):
 
         c = colors.get(label, None)
 
-        # 平均 ROC 曲线
-        plt.plot(fpr, tpr_mean, lw=2, color=c, label=curve_label)
+        ax.plot(fpr, tpr_mean, lw=2, color=c, label=curve_label)
 
-        # 95% CI 阴影（如果有）
         if ci95 is not None:
             lower = np.maximum(tpr_mean - ci95, 0)
             upper = np.minimum(tpr_mean + ci95, 1)
-            plt.fill_between(fpr, lower, upper, color=c, alpha=0.15)
+            ax.fill_between(fpr, lower, upper, color=c, alpha=0.15)
 
-    # 随机猜测对角线
-    plt.plot([0, 1], [0, 1], color="black", lw=1, linestyle="--")
+    ax.plot([0, 1], [0, 1], color="black", lw=1, linestyle="--")
 
-    plt.xlim(0.0, 1.0)
-    plt.ylim(0.0, 1.05)
-    plt.xlabel("False Positive Rate", fontsize=16)
-    plt.ylabel("True Positive Rate", fontsize=16)
-    plt.title("Average ROC Curves", fontsize=18, pad=20)
-    plt.legend(loc="lower right")
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.05)
+    ax.set_xlabel("False Positive Rate", fontsize=16)
+    ax.set_ylabel("True Positive Rate", fontsize=16)
+    ax.set_title("Average ROC Curves", fontsize=18, pad=20)
+    ax.legend(loc="lower right")
 
-    # 去掉上、右边框
-    ax = plt.gca()
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.tick_params(axis="x", labelsize=14)
-    ax.tick_params(axis="y", labelsize=14)
+    ax.tick_params(axis="x", labelsize=18)
+    ax.tick_params(axis="y", labelsize=18)
 
-    plt.tight_layout()
+    fig.tight_layout()
+
+    if out_pdf is not None:
+        fig.savefig(out_pdf, bbox_inches="tight", dpi=dpi)
+
     plt.show()
     return 0
