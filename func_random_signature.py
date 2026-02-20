@@ -15,13 +15,13 @@ from sklearn.metrics import (
 
 
 def random_sel(data, metadata, runSetting, param_grid):
-    # 仅保留有标签的样本
+    # only keep data has a label in metadata file in Group Column
     meta_labeled = metadata[~metadata["Group"].isna()].copy()
     sample_cols = [s for s in meta_labeled["Samples"] if s in data.columns]
 
     X_full = data.loc[:, sample_cols].T  # shape: n_samples x n_genes
     y_raw  = meta_labeled.set_index("Samples").loc[sample_cols, "Group"]
-    y = LabelEncoder().fit_transform(y_raw)  # 二分类编码（0/1）
+    y = LabelEncoder().fit_transform(y_raw)  # binarized
     if runSetting is None:
         N_RUNS = 1000
         N_FEATURES_PER_RUN = 100
@@ -51,20 +51,17 @@ def random_sel(data, metadata, runSetting, param_grid):
     sens_list = []
     spec_list = []
     auc_list  = []
-
-    # 每次 run 的 fpr / tpr（用于之后统一插值）
     fpr_list = []
     tpr_list = []
 
-    # 随机数发生器（用于基因子集选择）
     rng = np.random.default_rng(RANDOM_SEED)
-    all_genes = np.array(data.index)  # 全部基因名（行名）
+    all_genes = np.array(data.index)
 
     # ==========================
-    # 4. 主循环：随机基因 + 内层CV + 外层测试
+    # 4. main loop
     # ==========================
     for run in range(N_RUNS):
-        # 1) 随机抽取 N_FEATURES_PER_RUN 个基因
+        # random select N_FEATURES_PER_RUN genes
         chosen_genes = rng.choice(all_genes, size=N_FEATURES_PER_RUN, replace=False)
         X_sub = X_full.loc[:, chosen_genes].values  # ndarray (n_samples, N_FEATURES_PER_RUN)
 
@@ -76,7 +73,7 @@ def random_sel(data, metadata, runSetting, param_grid):
             random_state=RANDOM_SEED + run,
         )
 
-        # 3) 内层交叉验证（5 折），选择最优超参数
+
         base_svc = SVC(probability=True, class_weight="balanced", max_iter=10000)
         inner_cv = StratifiedKFold(
             n_splits=5,
@@ -96,11 +93,11 @@ def random_sel(data, metadata, runSetting, param_grid):
         grid.fit(X_tr, y_tr)
         best_model = grid.best_estimator_
 
-        # 4) 在外层测试集上评估
+
         y_pred = best_model.predict(X_te)
         acc = accuracy_score(y_te, y_pred)
 
-        # 混淆矩阵：tn, fp, fn, tp
+
         tn, fp, fn, tp = confusion_matrix(y_te, y_pred, labels=[0, 1]).ravel()
         sens = tp / (tp + fn) if (tp + fn) > 0 else 0.0  # sensitivity / recall of positive class
         spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0  # specificity
@@ -109,7 +106,7 @@ def random_sel(data, metadata, runSetting, param_grid):
         sens_list.append(sens)
         spec_list.append(spec)
 
-        # ===== 计算该 run 的 ROC 曲线（基于外层 test 集） =====
+        # ===== calculate ROC based on the testing set =====
         y_proba = best_model.predict_proba(X_te)[:, 1]  # 取阳性类概率
         fpr, tpr, _ = roc_curve(y_te, y_proba)
         auc = roc_auc_score(y_te, y_proba)
@@ -119,7 +116,7 @@ def random_sel(data, metadata, runSetting, param_grid):
         auc_list.append(auc)
 
     # ==========================
-    # 5. 汇总报告
+    # 5. summary report
     # ==========================
     avg_acc  = float(np.mean(acc_list))
     avg_sens = float(np.mean(sens_list))
@@ -133,9 +130,6 @@ def random_sel(data, metadata, runSetting, param_grid):
     print(f"Average Sensitivity: {avg_sens:.4f}")
     print(f"Average AUC:         {avg_auc:.4f}")
 
-    # ==========================
-    # 6. 保存每次 run 的 summary 指标
-    # ==========================
     run_metrics = pd.DataFrame({
         "Accuracy":    acc_list,
         "Specificity": spec_list,
@@ -143,13 +137,9 @@ def random_sel(data, metadata, runSetting, param_grid):
         "AUC":         auc_list,
     })
 
-    # ==========================
-    # 7. 计算平均 ROC + 95% CI，并保存为 CSV
-    # ==========================
-    # 1) 统一 FPR 网格
     mean_fpr = np.linspace(0, 1, 500)  # 500 点的均匀网格
 
-    # 2) 对每条 ROC 插值
+    # interpolate ROC
     tpr_interp_list = []
     for fpr, tpr in zip(fpr_list, tpr_list):
         tpr_interp = np.interp(mean_fpr, fpr, tpr)
@@ -157,7 +147,6 @@ def random_sel(data, metadata, runSetting, param_grid):
 
     tpr_interp_arr = np.vstack(tpr_interp_list)  # shape: (N_RUNS, 500)
 
-    # 3) 计算均值、标准差、95% CI
     tpr_mean = np.mean(tpr_interp_arr, axis=0)
     tpr_std  = np.std(tpr_interp_arr, axis=0)
     n        = tpr_interp_arr.shape[0]
@@ -168,14 +157,12 @@ def random_sel(data, metadata, runSetting, param_grid):
     tpr_mean[0]  = 0.0
     tpr_mean[-1] = 1.0
 
-    # 4) 组装用于画 ROC 的 tidy DataFrame
     roc_df = pd.DataFrame({
         "fpr":      mean_fpr,
         "tpr_mean": tpr_mean,
         "tpr_ci95": ci95,
     })
 
-    # 附加元信息
     roc_df["model"]          = "svc_random100_cv"
     roc_df["n_runs"]         = N_RUNS
     roc_df["n_features_run"] = N_FEATURES_PER_RUN
