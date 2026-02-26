@@ -56,12 +56,10 @@ def model(dataset_anova, metadata, model_selection, run_num, dropping,
     if model_type == 'random_forest':
         classifier = RandomForestClassifier(n_estimators=100)
     elif model_type == 'svc':
-        # classifier = SVC(probability=True, kernel='poly', degree=2, C=1, gamma='scale', max_iter=1000)
         classifier = SVC(probability=True, kernel='linear', C=1, gamma='scale', max_iter=1000)
     elif model_type == 'logistic_regression':
         classifier = LogisticRegression(max_iter=1000, solver='lbfgs')
     elif model_type == 'elastic_net':
-        # classifier = ElasticNetCV(alphas=[0.05, 0.1], l1_ratio=[0.1, 0.2, 0.3, 0.4, 0.5], cv=5)
         classifier = ElasticNet(alpha=0.05, l1_ratio=0.2)
 
     accuracies = []
