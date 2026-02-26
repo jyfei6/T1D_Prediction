@@ -44,9 +44,7 @@ def random_sel(data, metadata, runSetting, param_grid):
             },
         ]
 
-    # ==========================
-    # 3. 指标与 ROC 累积器
-    # ==========================
+
     acc_list  = []
     sens_list = []
     spec_list = []
@@ -57,9 +55,7 @@ def random_sel(data, metadata, runSetting, param_grid):
     rng = np.random.default_rng(RANDOM_SEED)
     all_genes = np.array(data.index)
 
-    # ==========================
-    # 4. main loop
-    # ==========================
+
     for run in range(N_RUNS):
         # random select N_FEATURES_PER_RUN genes
         chosen_genes = rng.choice(all_genes, size=N_FEATURES_PER_RUN, replace=False)
@@ -115,9 +111,6 @@ def random_sel(data, metadata, runSetting, param_grid):
         tpr_list.append(tpr)
         auc_list.append(auc)
 
-    # ==========================
-    # 5. summary report
-    # ==========================
     avg_acc  = float(np.mean(acc_list))
     avg_sens = float(np.mean(sens_list))
     avg_spec = float(np.mean(spec_list))

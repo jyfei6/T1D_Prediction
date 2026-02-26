@@ -19,10 +19,7 @@ def metric_boxplot(
     point_alpha=0.6,
     legend_loc="lower left",
 ):
-    """
-    仅做你给的那种可视化风格：boxplot + black strip dots, 厚边框/中位线, 去重 legend, 去 grid, 旋转x标签。
-    CSV 列名默认固定为 cols。
-    """
+
 
     # --- read & prep: long-form ---
     longs = []
@@ -70,7 +67,7 @@ def metric_boxplot(
     handles, labels = ax.get_legend_handles_labels()
     n = len(hue_order)
     ax.legend(handles[:n], labels[:n], title="Experiment",
-              frameon=True, loc=legend_loc, title_fontsize=10, prop={"size": 10})
+              frameon=True, loc=legend_loc, title_fontsize=20, prop={"size": 20})
 
     # --- cosmetics ---
     if ylim is not None:
@@ -90,4 +87,4 @@ def metric_boxplot(
         plt.savefig(out_pdf, bbox_inches="tight")
     plt.show()
 
-    return plot_df  # 方便你后续 describe / 统计
+    return plot_df
